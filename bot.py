@@ -6,11 +6,13 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Printing if the bot is connected
 @bot.event
 async def on_ready():
     print(f"{bot.user} is connected")
     bot.add_view(PersistentOperationView())
 
+# menu to choose a base for number operations
 class BaseSelect(Select):
     def __init__(self, placeholder):
         options = [
@@ -25,7 +27,8 @@ class BaseSelect(Select):
         self.view.selected_base = int(self.values[0])
         await interaction.response.defer()
         self.view.stop()
-
+        
+# Class that displays the base selection menu
 async def בחר_בסיס(ctx, טקסט):
     view = View(timeout=60)
     select = BaseSelect(placeholder=טקסט)
