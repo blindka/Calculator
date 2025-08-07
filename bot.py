@@ -158,3 +158,16 @@ async def פעולה(ctx):
 
         await ctx.send(f"**התוצאה ב{פלט} בבסיס {result_base}:**\n`{תוצאה}`")
     
+@bot.command(name="פקודות")
+async def send_commands_list(ctx):
+    try:
+        commands_message = (
+            "**רשימת פקודות הזמינות בבוט:**\n\n"
+            "**!פקודות** – קבלת רשימת כל הפקודות בפרטי\n"
+            "**! פעולה** – פתיחת תפריט לבחירת פעולה (המרה, חיבור, חיסור, כפל) בין מספרים בבסיסים שונים או זהים\n\n"
+            "הבוט תומך בבסיסים: בינארי (2), אוקטלי (8), עשרוני (10), הקסדצימלי (16).\n"
+        )
+
+        await ctx.author.send(commands_message)    
+    except discord.Forbidden:
+        await ctx.send("לא הצלחתי לשלוח לך הודעה בפרטי, ודא שאתה מאפשר הודעות פרטיות מהשרת.")
