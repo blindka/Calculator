@@ -4,29 +4,19 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 
-# Try to load environment variables from tokev.env file
-try:
-    load_dotenv('tokev.env')
-    print("📁 Loaded tokev.env file")
-except Exception as e:
-    print(f"⚠️ Could not load tokev.env: {e}")
-    
-# Check if the file exists
-if os.path.exists('tokev.env'):
-    print("✅ tokev.env file found")
-    with open('tokev.env', 'r') as f:
-        content = f.read()
-        if 'DISCORD_BOT_TOKEN' in content:
-            print("✅ DISCORD_BOT_TOKEN found in file")
-        else:
-            print("❌ DISCORD_BOT_TOKEN not found in file")
-else:
-    print("❌ tokev.env file not found in current directory")
+# Load environment variables from token.env file
+load_dotenv('token.env')
 
-# Bot settings
+# Bot settings - Use only basic intents (no privileged intents needed)
 intents = discord.Intents.default()
-intents.message_content = True
+intents.message_content = True  # This is needed for slash commands
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Simple test command
+@bot.tree.command(name="ping", description="Test if bot is working")
+async def ping(interaction: discord.Interaction):
+    await interaction.response.send_message("🏓 Pong! Bot is working!", ephemeral=True)
+    print(f"Ping command used by {interaction.user}")
 
 # Check if the number is valid for the given base
 def is_valid_number(num: str, base: int) -> bool:
@@ -69,45 +59,73 @@ def perform_operation(op: str, n1: int, n2: int):
     else:
         raise ValueError("Invalid operation")
 
-# On bot ready - Enhanced with better error handling and debugging
+# Bot ready event - Fixed duplicate commands issue
 @bot.event
 async def on_ready():
-    print(f"{bot.user} is connecting...")
-    try:
-        # Clear existing commands (optional - uncomment if needed)
-        # bot.tree.clear_commands(guild=None)
-        
-        # Sync commands
-        synced = await bot.tree.sync()
-        print(f"✅ Successfully synced {len(synced)} command(s)")
-        
-        # List synced commands for debugging
-        for command in synced:
-            print(f"   - /{command.name}: {command.description}")
-            
-    except Exception as e:
-        print(f"❌ Failed to sync commands: {e}")
-        print(f"Error type: {type(e).__name__}")
+    print(f"\n{'='*50}")
+    print(f"🤖 BOT LOGIN SUCCESSFUL")
+    print(f"Bot: {bot.user.name} (ID: {bot.user.id})")
+    print(f"{'='*50}")
     
-    print(f"🤖 {bot.user} is now online and ready!")
-    print(f"🆔 Bot ID: {bot.user.id}")
-    print(f"🔧 Bot is in {len(bot.guilds)} guild(s)")
+    # Check servers
+    print(f"🏠 Bot is in {len(bot.guilds)} server(s):")
+    for guild in bot.guilds:
+        print(f"   • {guild.name} (ID: {guild.id}, Members: {guild.member_count})")
+    
+    # Check bot permissions in each guild
+    for guild in bot.guilds:
+        bot_member = guild.get_member(bot.user.id)
+        if bot_member:
+            perms = bot_member.guild_permissions
+            print(f"\n🔐 Permissions in '{guild.name}':")
+            print(f"   Administrator: {perms.administrator}")
+            print(f"   Use Slash Commands: {perms.use_application_commands}")
+            print(f"   Send Messages: {perms.send_messages}")
+    
+    # Show registered commands BEFORE syncing
+    print(f"\n📝 Commands registered in code:")
+    for cmd in bot.tree.get_commands():
+        print(f"   • {cmd.name}: {cmd.description}")
+    
+    # Fixed: Simple sync - only global OR only specific servers
+    print(f"\n🔄 Attempting to sync slash commands...")
+    
+    try:
+        # Choose one of two options:
+        
+        # Option 1: Global sync (recommended - simpler, but takes up to 1 hour)
+        synced = await bot.tree.sync()
+        print(f"   🌐 Global sync successful: {len(synced)} commands")
+        print(f"   ⏰ Commands will be available in ALL servers within 1 hour")
+        
+        # Option 2: Immediate sync to specific servers (uncomment to use)
+        # total_synced = 0
+        # for guild in bot.guilds:
+        #     try:
+        #         synced = await bot.tree.sync(guild=guild)
+        #         total_synced += len(synced)
+        #         print(f"   ✅ Synced {len(synced)} commands to '{guild.name}' (IMMEDIATE)")
+        #         for cmd in synced:
+        #             print(f"      - /{cmd.name}")
+        #     except Exception as e:
+        #         print(f"   ❌ Failed to sync to '{guild.name}': {e}")
+        # print(f"   🎉 Commands available IMMEDIATELY in {len(bot.guilds)} server(s)!")
+        
+    except Exception as e:
+        print(f"❌ SYNC FAILED: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    print(f"{'='*50}\n")
 
-# Error handler for command errors
+# Error handler
 @bot.tree.error
 async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
-    if isinstance(error, app_commands.CommandOnCooldown):
-        await interaction.response.send_message(f"Command is on cooldown. Try again in {error.retry_after:.2f} seconds.", ephemeral=True)
-    else:
-        print(f"Command error: {error}")
-        await interaction.response.send_message("An error occurred while processing the command.", ephemeral=True)
+    print(f"Command error: {error}")
+    if not interaction.response.is_done():
+        await interaction.response.send_message("❌ An error occurred!", ephemeral=True)
 
-# Test command to verify bot is working
-@bot.tree.command(name="test", description="Test if the bot is working properly")
-async def test_command(interaction: discord.Interaction):
-    await interaction.response.send_message("✅ הבוט עובד בצורה תקינה! (Bot is working properly!)", ephemeral=True)
-
-# Slash Command - Convert between bases
+# Convert command
 @bot.tree.command(name="convert", description="Convert a number from one base to another")
 @app_commands.describe(number="The number to convert", from_base="Base of the input number", to_base="Base of the result")
 async def convert(interaction: discord.Interaction, number: str, from_base: int, to_base: int):
@@ -127,15 +145,15 @@ async def convert(interaction: discord.Interaction, number: str, from_base: int,
         print(f"Error in convert command: {e}")
         await interaction.response.send_message("An error occurred during conversion.", ephemeral=True)
 
-# Slash Command - Perform operation between two numbers
+# Operation command
 @bot.tree.command(name="operation", description="Perform an operation between two numbers in given bases")
 @app_commands.describe(
     op="Operation type: add, sub, mul, div, and, or, xor",
     num1="First number",
-    base1="Base of first number",
+    base1="Base of first number", 
     num2="Second number",
     base2="Base of second number",
-    result_base="Base for the result (ignored for div)"
+    result_base="Base for the result"
 )
 async def operation(interaction: discord.Interaction, op: str, num1: str, base1: int, num2: str, base2: int, result_base: int):
     print(f"Operation command used: {op} between {num1} (base {base1}) and {num2} (base {base2})")
@@ -180,151 +198,80 @@ async def operation(interaction: discord.Interaction, op: str, num1: str, base1:
         print(f"Error formatting result: {e}")
         await interaction.response.send_message("An error occurred while formatting the result.", ephemeral=True)
 
-# View for interactive commands help (sends DM)
-class CommandsHelpView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=300)  # 5 minute timeout
-
-    async def on_timeout(self):
-        # Disable buttons when view times out
-        for item in self.children:
-            item.disabled = True
-
-    @discord.ui.button(label="Convert Command", style=discord.ButtonStyle.primary, emoji="🔄")
-    async def convert_help(self, interaction: discord.Interaction, button: discord.ui.Button):
-        msg = (
-            "🔄 **/convert**\n"
-            "**Usage:** `/convert number:<value> from_base:<2|8|10|16> to_base:<2|8|10|16>`\n"
-            "**Example:** `/convert number:1011 from_base:2 to_base:10`\n"
-            "**Description:** Converts a number from one base to another.\n"
-            "**Supported bases:** Binary (2), Octal (8), Decimal (10), Hexadecimal (16).\n\n"
-            "**Examples:**\n"
-            "• Binary to Decimal: `/convert number:1011 from_base:2 to_base:10` → Result: `11`\n"
-            "• Hex to Binary: `/convert number:ff from_base:16 to_base:2` → Result: `11111111`"
-        )
-        try:
-            await interaction.user.send(msg)
-            await interaction.response.send_message("📩 I sent you a DM with the Convert command details.", ephemeral=True)
-        except discord.Forbidden:
-            await interaction.response.send_message("❌ I couldn't send you a DM. Please enable DMs from this server.", ephemeral=True)
-
-    @discord.ui.button(label="Operation Command", style=discord.ButtonStyle.primary, emoji="🧮")
-    async def operation_help(self, interaction: discord.Interaction, button: discord.ui.Button):
-        msg = (
-            "🧮 **/operation**\n"
-            "**Usage:** `/operation op:<add|sub|mul|div|and|or|xor> num1:<value> base1:<2|8|10|16> num2:<value> base2:<2|8|10|16> result_base:<2|8|10|16>`\n"
-            "**Example:** `/operation op:add num1:101 base1:2 num2:7 base2:10 result_base:10`\n"
-            "**Description:** Performs mathematical or binary operations between two numbers in given bases.\n\n"
-            "**Operations:**\n"
-            "• **Mathematical:** add, sub, mul, div\n"
-            "• **Binary:** and, or, xor\n\n"
-            "**Note:** For `div`, shows quotient and remainder. Logical operations work on integer values.\n\n"
-            "**Examples:**\n"
-            "• Add: `/operation op:add num1:101 base1:2 num2:3 base2:10 result_base:10` → Result: `8`\n"
-            "• XOR: `/operation op:xor num1:ff base1:16 num2:aa base2:16 result_base:16` → Result: `55`"
-        )
-        try:
-            await interaction.user.send(msg)
-            await interaction.response.send_message("📩 I sent you a DM with the Operation command details.", ephemeral=True)
-        except discord.Forbidden:
-            await interaction.response.send_message("❌ I couldn't send you a DM. Please enable DMs from this server.", ephemeral=True)
-
-    @discord.ui.button(label="Test Command", style=discord.ButtonStyle.success, emoji="✅")
-    async def test_help(self, interaction: discord.Interaction, button: discord.ui.Button):
-        msg = (
-            "✅ **/test**\n"
-            "**Usage:** `/test`\n"
-            "**Description:** Simple command to test if the bot is working properly.\n"
-            "**Use this:** To verify the bot is responding to slash commands correctly."
-        )
-        try:
-            await interaction.user.send(msg)
-            await interaction.response.send_message("📩 I sent you a DM with the Test command details.", ephemeral=True)
-        except discord.Forbidden:
-            await interaction.response.send_message("❌ I couldn't send you a DM. Please enable DMs from this server.", ephemeral=True)
-
-# Slash Command - Interactive commands help (Enhanced)
-@bot.tree.command(name="commands", description="Interactive help for all available commands")
-async def commands_help(interaction: discord.Interaction):
-    print(f"Commands help requested by {interaction.user}")
-    
+# Help command
+@bot.tree.command(name="help", description="Get help with bot commands")
+async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
-        title="🤖 Bot Commands Help",
-        description="Click the buttons below to receive detailed information about each command in your DMs:",
+        title="🤖 Calculator Bot Commands",
+        description="Available commands:",
         color=discord.Color.blue()
     )
     embed.add_field(
-        name="Available Commands",
-        value="• `/convert` - Convert numbers between bases\n• `/operation` - Perform calculations\n• `/test` - Test bot functionality",
+        name="🏓 /ping", 
+        value="Test if bot is working", 
         inline=False
     )
-    embed.set_footer(text="💡 Make sure your DMs are open to receive help messages!")
-    
-    view = CommandsHelpView()
-    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-
-# Additional command for debugging server info
-@bot.tree.command(name="botinfo", description="Show bot information and status")
-async def bot_info(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="🤖 Bot Information",
-        color=discord.Color.green()
+    embed.add_field(
+        name="🔄 /convert", 
+        value="Convert numbers between bases (2, 8, 10, 16)", 
+        inline=False
     )
-    embed.add_field(name="Bot Name", value=bot.user.display_name, inline=True)
-    embed.add_field(name="Bot ID", value=bot.user.id, inline=True)
-    embed.add_field(name="Servers", value=len(bot.guilds), inline=True)
-    embed.add_field(name="Commands", value=len(bot.tree.get_commands()), inline=True)
-    embed.add_field(name="Latency", value=f"{round(bot.latency * 1000)}ms", inline=True)
+    embed.add_field(
+        name="🧮 /operation", 
+        value="Perform operations (add, sub, mul, div, and, or, xor)", 
+        inline=False
+    )
+    embed.set_footer(text="💡 All responses are private (ephemeral)")
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-# Manual sync command (for debugging - only for bot owner)
-@bot.tree.command(name="sync", description="Manually sync slash commands (Owner only)")
-async def sync_commands(interaction: discord.Interaction):
-    # Replace YOUR_USER_ID with your actual Discord user ID
-    if interaction.user.id != 269890726840500224:  # Replace with your Discord ID
-        await interaction.response.send_message("❌ Only the bot owner can use this command.", ephemeral=True)
-        return
-    
+# Force sync command for emergency
+@bot.tree.command(name="forcesync", description="Emergency command sync")
+async def force_sync(interaction: discord.Interaction):
     try:
-        synced = await bot.tree.sync()
-        await interaction.response.send_message(f"✅ Manually synced {len(synced)} commands!", ephemeral=True)
+        synced = await bot.tree.sync(guild=interaction.guild)
+        await interaction.response.send_message(f"🔄 Force synced {len(synced)} commands to this server!", ephemeral=True)
+        print(f"Force sync by {interaction.user}: {len(synced)} commands")
     except Exception as e:
-        await interaction.response.send_message(f"❌ Failed to sync: {e}", ephemeral=True)
+        await interaction.response.send_message(f"❌ Force sync failed: {e}", ephemeral=True)
+        print(f"Force sync error: {e}")
+
+
 
 # Run the bot
 if __name__ == "__main__":
-    print("🔍 Current working directory:", os.getcwd())
-    print("📁 Files in directory:", os.listdir('.'))
+    print("🚀 STARTING BOT...")
+    print("📁 Current directory:", os.getcwd())
+    print("📁 Files:", [f for f in os.listdir('.') if f.endswith('.env')])
     
-    # Try to get token from environment variable first
+    # Get token
     token = os.getenv('DISCORD_BOT_TOKEN')
-    print(f"🔑 Token loaded: {'Yes' if token else 'No'}")
     
     if not token:
-        print("⚠️  No token found in environment variables!")
-        print("📝 Please check your tokev.env file:")
-        print("   1. Make sure it's in the same folder as bot.py")
-        print("   2. Make sure it contains: DISCORD_BOT_TOKEN=your_actual_token")
-        print("   3. No spaces around the = sign")
-        print("   4. No quotes around the token")
-        print("\n💡 Example tokev.env content:")
-        print("DISCORD_BOT_TOKEN=MTQwMDk2MjkzOTc0NTMzNzM2NA.GWLRVm.your_actual_token_here")
+        print("❌ NO TOKEN FOUND!")
+        print("📝 Make sure token.env contains:")
+        print("   DISCORD_BOT_TOKEN=your_actual_token")
         
-        # Try to read the file manually for debugging
-        if os.path.exists('tokev.env'):
-            print("\n📄 Current tokev.env content:")
-            with open('tokev.env', 'r') as f:
-                lines = f.readlines()
-                for i, line in enumerate(lines, 1):
-                    print(f"   Line {i}: '{line.strip()}'")
+        if os.path.exists('token.env'):
+            print("\n📄 Current token.env content:")
+            with open('token.env', 'r') as f:
+                content = f.read()
+                print(f"'{content}'")
+                if 'DISCORD_BOT_TOKEN' not in content:
+                    print("❌ Missing DISCORD_BOT_TOKEN in file!")
+        else:
+            print("❌ token.env file not found!")
         
         exit(1)
     
+    print(f"✅ Token loaded: {token[:20]}...")
+    
     try:
-        print("🚀 Starting bot...")
+        print("🔌 Connecting to Discord...")
         bot.run(token)
     except discord.LoginFailure:
-        print("❌ Invalid bot token! Please check your token.")
+        print("❌ INVALID TOKEN! Please regenerate your bot token.")
     except Exception as e:
-        print(f"❌ Error starting bot: {e}")
+        print(f"❌ BOT ERROR: {e}")
+        import traceback
+        traceback.print_exc()
