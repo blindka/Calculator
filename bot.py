@@ -4,7 +4,7 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from token.env file test
+# Load environment variables from token.env file 
 load_dotenv('token.env')
 
 # Bot settings - Use only basic intents (no privileged intents needed)
@@ -38,7 +38,7 @@ def convert_base(num_str: str, from_base: int, to_base: int) -> str:
     else:
         raise ValueError("Invalid base")
 
-# Perform the selected operation
+# Perform operation between two numbers (add, sub, mul, div, and, or, xor)
 def perform_operation(op: str, n1: int, n2: int):
     if op == "add":
         return n1 + n2
@@ -59,7 +59,7 @@ def perform_operation(op: str, n1: int, n2: int):
     else:
         raise ValueError("Invalid operation")
 
-# Bot ready event - Fixed duplicate commands issue
+# Bot ready event 
 @bot.event
 async def on_ready():
     print(f"\n{'='*50}")
@@ -87,29 +87,13 @@ async def on_ready():
     for cmd in bot.tree.get_commands():
         print(f"   • {cmd.name}: {cmd.description}")
     
-    # Fixed: Simple sync - only global OR only specific servers
     print(f"\n🔄 Attempting to sync slash commands...")
     
     try:
-        # Choose one of two options:
-        
         # Option 1: Global sync (recommended - simpler, but takes up to 1 hour)
         synced = await bot.tree.sync()
         print(f"   🌐 Global sync successful: {len(synced)} commands")
         print(f"   ⏰ Commands will be available in ALL servers within 1 hour")
-        
-        # Option 2: Immediate sync to specific servers (uncomment to use)
-        # total_synced = 0
-        # for guild in bot.guilds:
-        #     try:
-        #         synced = await bot.tree.sync(guild=guild)
-        #         total_synced += len(synced)
-        #         print(f"   ✅ Synced {len(synced)} commands to '{guild.name}' (IMMEDIATE)")
-        #         for cmd in synced:
-        #             print(f"      - /{cmd.name}")
-        #     except Exception as e:
-        #         print(f"   ❌ Failed to sync to '{guild.name}': {e}")
-        # print(f"   🎉 Commands available IMMEDIATELY in {len(bot.guilds)} server(s)!")
         
     except Exception as e:
         print(f"❌ SYNC FAILED: {e}")
@@ -125,7 +109,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     if not interaction.response.is_done():
         await interaction.response.send_message("❌ An error occurred!", ephemeral=True)
 
-# Convert command
+# Convert command - converts a number from one base to another
 @bot.tree.command(name="convert", description="Convert a number from one base to another")
 @app_commands.describe(number="The number to convert", from_base="Base of the input number", to_base="Base of the result")
 async def convert(interaction: discord.Interaction, number: str, from_base: int, to_base: int):
@@ -145,7 +129,7 @@ async def convert(interaction: discord.Interaction, number: str, from_base: int,
         print(f"Error in convert command: {e}")
         await interaction.response.send_message("An error occurred during conversion.", ephemeral=True)
 
-# Operation command
+# Operation command - performs operations between two numbers in given bases
 @bot.tree.command(name="operation", description="Perform an operation between two numbers in given bases")
 @app_commands.describe(
     op="Operation type: add, sub, mul, div, and, or, xor",
@@ -198,7 +182,7 @@ async def operation(interaction: discord.Interaction, op: str, num1: str, base1:
         print(f"Error formatting result: {e}")
         await interaction.response.send_message("An error occurred while formatting the result.", ephemeral=True)
 
-# Help command
+# Help command - provides information about available commands
 @bot.tree.command(name="help", description="Get help with bot commands")
 async def help_command(interaction: discord.Interaction):
     embed = discord.Embed(
@@ -236,15 +220,12 @@ async def force_sync(interaction: discord.Interaction):
         await interaction.response.send_message(f"❌ Force sync failed: {e}", ephemeral=True)
         print(f"Force sync error: {e}")
 
-
-
-# Run the bot
 if __name__ == "__main__":
     print("🚀 STARTING BOT...")
     print("📁 Current directory:", os.getcwd())
     print("📁 Files:", [f for f in os.listdir('.') if f.endswith('.env')])
     
-    # Get token
+    # Get token - from token.env file
     token = os.getenv('DISCORD_BOT_TOKEN')
     
     if not token:
