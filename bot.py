@@ -4,7 +4,7 @@ from discord.ext import commands
 import os
 from dotenv import load_dotenv
 
-# Load environment variables from token.env file
+# Load environment variables from token.env file test
 load_dotenv('token.env')
 
 # Bot settings - Use only basic intents (no privileged intents needed)
